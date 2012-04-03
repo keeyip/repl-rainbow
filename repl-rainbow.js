@@ -162,8 +162,7 @@ function Ansi(code){
 var ansicache = {}; 
 
 Ansi.prototype = function(){
-  var sets = {
-  };
+  var sets = {};
 
   sets.rgb = [
     [0x00, 0x00, 0x00], [0xcd, 0x00, 0x00], [0x00, 0xcd, 0x00], [0xcd, 0xcd, 0x00],
@@ -179,8 +178,8 @@ Ansi.prototype = function(){
   }
 
   for (i=0; i < 22; i++){
-    var v = 8 + i * 10;
-    sets.rgb.push([v, v, v]);
+    r = 8 + i * 10;
+    sets.rgb.push([r, r, r]);
   }
 
   sets.rgb = sets.rgb.map(function(c){ return RGB.apply(null, c) });
@@ -203,7 +202,7 @@ Ansi.prototype = function(){
 
   function mapDistance(v){
     v = v.hsl();
-    return hsl.slice(16).map(function(c){
+    return sets.hsl.slice(16).map(function(c){
       return [c, distance(c, v)];
     }).sort(function(a,b){
       return a[1]-b[1];
@@ -282,7 +281,7 @@ ColorSet.prototype = {
   constructor: ColorSet,
   hsl: function hsl(){ return this.map(function(c){ return c.hsl() }) },
   rgb: function rgb(){ return this.map(function(c){ return c.rgb() }) },
-  ansi: function hsl(){ return this.map(function(c){ return c.ansi() }) },
+  ansi: function ansi(){ return this.map(function(c){ return c.ansi() }) },
 }
 
 function wrapMethod(method){

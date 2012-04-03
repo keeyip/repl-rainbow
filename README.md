@@ -48,7 +48,7 @@ The common api is:
 
 A few bonus extras are avaiable on Ansi types
 
-* __basic(bg)__: convert to the nearest of the basic 16 colors for downgradging. Set `bg` to true to get the bg escape
+* __basic(bg)__: convert to the nearest of the basic 16 colors for downgrading. Set `bg` to true to get the bg escape
 * __escape(text, type)__: escapes the text with the full ansi escape sequence for the color. Set `bg` to true for the bg escape
 
 
