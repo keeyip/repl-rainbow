@@ -10,46 +10,46 @@ Hop aboard the rainbow. Have some colors. I found all existing libs out there ei
 
 ## Basic Usage
 
-The api is designed to be very easy to use. The base exports is the Rainbow function which attempts to determine from given inputs what type of color you want.
+The api is designed to be very easy to use. The base exports is the Rainbow function which attempts to determine from given inputs what type of color you're providing. All colors are translated to xterm-256 colors internally first. The returned value is a function that can then be called on text to escape it. In this way the Ansi function objects act as both storage for settings and as text transformers.
 
 ```javascript
-var rainbow = require('repl-rainbow');
+var R = require('repl-rainbow');
 
-// explicit
-rainbow('hsl', 180, 1, 0.5);
+//red background, white foreground, underlined, with one space padding on either side
+var red = R('#f00').fg('#fff').under().pad();
 
-// guessing from numbers
-rainbow(255,0,0); //rgb
-rainbow(50) //ansi
-
-// arrays work
-rainbow([255,0,0]);
-
+//now red can be used on text to escape it
+console.log(red('Check me out'));
 ```
+
+## Utilities
+
+* __Rainbow.gradient(colors, lengthPer)__: Generate multiple interpolated gradients for all colors in the provided array. Length per is how many items each gradient should have, defaulting to 15.
+* __Rainbow.spectrum()__: Preset gradient generator that will produce the spectrum, no configuration needed!
+
+
 
 ## Detailed Usage
 
-Aside from the main function there's also a direct function for each. They all have identical methods. RGB has an rgb method that returns itself, for example, for the sake of consistency.
+* __closest(n)__: return the `n` closest colors using HSL to measure.
+* __gradient(c,n)__: returns an array of `n` length with colors interpolating to `c` using HSL to measure.
 
-The differences are:
-
-* __rainbow.RGB__ has `r`, `g`, `b`
-* __rainbow.HSL__ has `h`, `s`, `l`
-* __rainbow.Ansi__ has `code`
-
-The common api is:
-
-* __rgb()__: return an rgb instance for the color
-* __hsl()__: return an hsl instance for the color
-* __ansi()__: return an ansi instance for the color
-* __hex()__: return the HTML hex code for the color as rgb
-* __closest(n)__: return the n closest colors, using that color space's rules
-* __gradient(c,n)__: returns an array of `n` length with colors interpolating to `c` in that color space
-
-A few bonus extras are avaiable on Ansi types
 
 * __basic(bg)__: convert to the nearest of the basic 16 colors for downgrading. Set `bg` to true to get the bg escape
-* __escape(text, type)__: escapes the text with the full ansi escape sequence for the color. Set `bg` to true for the bg escape
+* __style()__: Set multiple other styles at once, like italic, etc.
+* __child()__: Return a new function that inherits from this one so it can be customized
+* __fg()__: Specify another color as the foreground for this. Causes this color to become the bg.
+* __bg()__: Specify another color as the background, making this the foreground. /* bg and fg are mutually exclusive */
+* __ital()__: Toggles this `italic` property.
+* __inv()__: Toggles this `inverse` property.
+* __under()__: Toggles this `underline` property.
+* __pad(n)__: Pads text when escaped to `n`. If no `n` is provided then it will cycle from 0 to 4 and back eac .pad().
+
+
+* __rgb()__: return an rgb array for the color
+* __hsl()__: return an hsl array for the color
+* __ansi()__: return the ansi code for the color
+* __hex()__: return the HTML hex code for the color
 
 
 ## Arrays
