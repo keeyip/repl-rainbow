@@ -1,12 +1,20 @@
 # Repl-Rainbow
 Hop aboard the rainbow. Have some colors. I found all existing libs out there either not adequate for my needs and usually lacking most of the tools I wanted.
 
-## Goals
+## Visual Introduction
 
-* provide easy translating between core color spaces of RGB and HSL and 256 color Ansi
-* translate from any one to any other with ease and terse syntax
-* provide baseline tools for generating sets of colors like gradients and nearest colors
-* transform arrays of colors at at a single time
+![Starting with spectrum utility](https://raw.github.com/Benvie/repl-rainbow/master/docs/ss1.png)
+
+![Mass foreground change](https://raw.github.com/Benvie/repl-rainbow/master/docs/ss2.png)
+
+![Underline](https://raw.github.com/Benvie/repl-rainbow/master/docs/ss3.png)
+
+![Padding](https://raw.github.com/Benvie/repl-rainbow/master/docs/ss4.png)
+
+![Individual color](https://raw.github.com/Benvie/repl-rainbow/master/docs/ss5.png)
+
+![Applying color to text](https://raw.github.com/Benvie/repl-rainbow/master/docs/ss6.png)
+
 
 ## Basic Usage
 
