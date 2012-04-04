@@ -56,6 +56,14 @@ console.log(red('Check me out'));
 
 The return type for operations that return sets is `ColorSet`. A ColorSet is just an array with a bit of extra functionality. All the Array functions that return new arrays are wrapped so that you always get back a ColorSet. This allows you to do multiple filters and mappings and still have a ColorSet.
 
-* __hsl()__: maps the ColorSet to another ColorSet where all the values have been converted to hsl's
-* __rgb()__: same for rgb
-* __ansi()__: same for ansi
+The following properties do the same as the single item one, except to every item in the set.
+
+__hsl, rgb, ansi, fg, bg, ital, inv, under, pad__
+
+The following are wrapped version of the Array.prototype function, but always returning a ColorSet instead of an Array
+__map, sort, concat, slice__
+
+Custom API
+
+__unique()__: Since there can be multiple instances for any given color, this function will return a unique set based on ansi escape number.
+__chunk(size)__: Create a chunked array where the properties of the input array are split based on the given chunk size. Returns a ColorSet containing multiple ColorSets.
