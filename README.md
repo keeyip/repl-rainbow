@@ -34,7 +34,7 @@ console.log(red('Check me out'));
 
 * __Rainbow.gradient(colors, lengthPer)__: Generate multiple interpolated gradients for all colors in the provided array. Length per is how many items each gradient should have, defaulting to 15.
 * __Rainbow.spectrum()__: Preset gradient generator that will produce the spectrum, no configuration needed!
-
+* __Rainbow.random(text)__: Ansi escapes the given text with a random color.
 
 
 ## Detailed Usage
@@ -73,5 +73,6 @@ __map, sort, concat, slice__
 
 Custom API
 
-__unique()__: Since there can be multiple instances for any given color, this function will return a unique set based on ansi escape number.
-__chunk(size)__: Create a chunked array where the properties of the input array are split based on the given chunk size. Returns a ColorSet containing multiple ColorSets.
+* __unique()__: Since there can be multiple instances for any given color, this function will return a unique set based on ansi escape number.
+* __chunk(size)__: Create a chunked array where the properties of the input array are split based on the given chunk size. Returns a ColorSet containing multiple ColorSets.
+* __flatten()__: Flatten a multi-dimensional set of ColorSets down a single ColorSet.
