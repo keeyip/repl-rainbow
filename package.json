@@ -2,12 +2,12 @@
   "author": "Brandon Benvie <brandon@bbenvie.com> (http://bbenvie.com)",
   "name": "repl-rainbow",
   "description": "A lib for easily translating and manipulating colors and sets of colors centered around xterm-256 pallette",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "homepage": "https://github.com/Benvie/repl-rainbow",
   "repository": {
     "url": "git://github.com/Benvie/repl-rainbow.git"
   },
-  "main": "repl-rainbow.js",
+  "main": "index.js",
   "dependencies": {},
   "devDependencies": {},
   "optionalDependencies": {},

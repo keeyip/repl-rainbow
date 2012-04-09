@@ -1,3 +1,5 @@
+"use strict";
+
 module.exports = Rainbow;
 
 function Rainbow(a,b,c,d){
@@ -27,6 +29,25 @@ function Rainbow(a,b,c,d){
   if (ansi) return Color(ansi);
   throw new Error('No idea what you gave to me');
 }
+
+function rng(max){ return (Math.random() * max + 0.5) | 0 }
+
+Rainbow.random = function random(txt){
+  return Rainbow('ansi', rng(239))(txt || '■■■');
+};
+
+Rainbow.gradient = function gradient(colors, lengthPer){
+  return ColorSet(colors.map(function(color,i){
+    return Rainbow(color).gradient(colors[ (i+1) % colors.length ], lengthPer || 15);
+  }));
+};
+
+Rainbow.spectrum = function spectrum(){
+  return Rainbow.gradient([ '#f00', '#ff0', '#0f0', '#0ff', '#00f', '#f0f' ]);
+};
+
+
+
 
 function wrapMethod(method){
   return function(){
@@ -74,6 +95,9 @@ ColorSet.prototype = {
     }
     return out;
   },
+  flatten: function flatten(){
+    return this.concat.apply([], this);
+  },
   toString: function toString(){
     return this.join('');
   }
@@ -84,24 +108,11 @@ ColorSet.prototype = {
   ColorSet.prototype[n] = wrapMethod(Array.prototype[n]);
 });
 
-['fg', 'bg', 'ital', 'inv', 'under', 'pad'].forEach(function(n){
+['fg', 'bg', 'ital', 'inv', 'under', 'bold', 'pad'].forEach(function(n){
   ColorSet.prototype[n] = function(v){
     return this.map(function(item){ return item[n](v) });
   };
 });
-
-
-Rainbow.gradient = function gradient(colors, lengthPer){
-  return ColorSet(colors.map(function(color,i){
-    return Rainbow(color).gradient(colors[ (i+1) % colors.length ], lengthPer || 15);
-  }));
-};
-
-
-Rainbow.spectrum = function spectrum(){
-  return Rainbow.gradient([ '#f00', '#ff0', '#0f0', '#0ff', '#00f', '#f0f' ]);
-};
-
 
 
 function Color(code){
@@ -127,13 +138,13 @@ Color.prototype = function(){
   var sets = {};
 
   sets.rgb = [
-    [0x00, 0x00, 0x00], [0xcd, 0x00, 0x00], [0x00, 0xcd, 0x00], [0xcd, 0xcd, 0x00],
-    [0x00, 0x00, 0xee], [0xcd, 0x00, 0xcd], [0x00, 0xcd, 0xcd], [0xe5, 0xe5, 0xe5],
-    [0x7f, 0x7f, 0x7f], [0xff, 0x00, 0x00], [0x00, 0xff, 0x00], [0xff, 0xff, 0x00],
-    [0x5c, 0x5c, 0xff], [0xff, 0x00, 0xff], [0x00, 0xff, 0xff], [0xff, 0xff, 0xff],
+    [   0,   0,   0 ], [ 205, 0,   0 ], [ 0, 205,   0 ], [ 205, 205,   0 ],
+    [   0,   0, 238 ], [ 205, 0, 205 ], [ 0, 205, 205 ], [ 229, 229, 229 ],
+    [ 127, 127, 127 ], [ 255, 0,   0 ], [ 0, 255,   0 ], [ 255, 255,   0 ],
+    [  92,  92, 255 ], [ 255, 0, 255 ], [ 0, 255, 255 ], [ 255, 255, 255 ],
   ];
 
-  var r = [0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff];
+  var r = [ 0, 95, 135, 175, 215, 255 ];
 
   for (var i=0; i < 217; i++) {
     sets.rgb.push([r[(i / 36 % 6) | 0], r[(i / 6 % 6) | 0], r[i % 6]]);
@@ -183,7 +194,7 @@ Color.prototype = function(){
       return sets.hsl[this.code];
     },
     hex: function hex(){
-      return rgb2hex(sets.rgb[this.code]);
+      return rgb2hex.apply(null, sets.rgb[this.code]);
     },
     basic: function basic(bg){
       if (this.code in cache) return cache[this.code];
@@ -222,13 +233,10 @@ Color.prototype = function(){
         start.push('38;5;'+this.foreground.code);
         end.push('39');
       }
-      if (this.italic)    start.push('3'),  end.push('23');
-      if (this.underline) start.push('4'),  end.push('24');
-      if (this.overline)  start.push('21'), end.push('24');
-      if (this.inverse)   start.push('7'),  end.push('27');
-      function esc(nums){
-        return '\33['+ nums.join(';')+'m';
-      }
+      if (this.bolded)    start.push('1'), end.push('22');
+      if (this.italic)    start.push('3'), end.push('23');
+      if (this.underline) start.push('4'), end.push('24');
+      if (this.inverse)   start.push('7'), end.push('27');
       return esc(start) + space(this.padding) + text + space(this.padding) + esc(end);
     },
     style: function style(styles){
@@ -246,20 +254,18 @@ Color.prototype = function(){
     bg: function background(v){ this.background = (v instanceof Rainbow ? v : Rainbow(v)); return this },
     ital: function italic(v){ def(this, 'italic', v || !this.italic); return this },
     inv: function inverse(v){ def(this, 'inverse', v || !this.inverse); return this },
+    bold: function bolded(v){ def(this, 'bolded', v || !this.bolded); return this },
     under: function underline(v){ def(this, 'underline',  v || !this.underline); return this },
-    pad: function padding(pad){ this.padding = 1 in arguments ? pad : (this.padding+1)%4; return this; },
-    toString: function toString(){
-      return this.escape(('   '+this.code).slice(-3));
-    },
+    pad: function padding(pad){ this.padding = arguments.length ? pad : (num(this.padding)+1)%4; return this; },
+    toString: function toString(){ return this.escape(('   '+this.code).slice(-3)) },
     inspect: function inspect(){ return this.toString() },
   };
 }();
 
 function def(o,n,v){ Object.defineProperty(o,n, { configurable: true, writable: true, value: v })  }
 
-
-
-function space(n){ return new Array(n+1).join(' ') }
+function esc(a){ return String.fromCharCode(27)+'['+ a.join(';')+'m' }
+function space(n){ return n > 0 ? Array(n+1).join(' ') : '' }
 
 function between(min,max,n){ return n >= min && n <= max }
 function inRGB(n){ return between(0,255,n) }
@@ -268,10 +274,6 @@ function isPercent(n){ return n >= 0 && n <= 0 }
 function isDecimal(n){ return n | 0 !== n}
 function num(o){ return +o || 0 }
 function twodigits(n){ return +n.toFixed(2) || 0 }
-
-
-
-//var lines='┏┳━┓'+'┣╋━┫'+'┗┻━┛'+'…'
 
 
 function hex2rgb(hex){
@@ -295,8 +297,7 @@ function rgb2hsl(r,g,b){
 }
 
 function hsl2rgb(d,e,f){
-  function g(a){ return a>360?a-=360:a<0&&(a+=360),a<60?
-   b+(c-b)*a/60:a<180?c:a<240?b+(c-b)*(240-a)/60:b }
+  function g(a){ return a>360?a-=360:a<0&&(a+=360),a<60?b+(c-b)*a/60:a<180?c:a<240?b+(c-b)*(240-a)/60:b }
   function h(a){ return g(a)*255+.5|0 }
   var b,c;d%=360;d<0&&(d+=360);
   e=e<0?0:e>1?1:e;f=f<0?0:f>1?1:f;
@@ -305,7 +306,6 @@ function hsl2rgb(d,e,f){
 }
 
 function hsl2ansi(h,s,l){
-  var hsl = { h: h, s: s, l: l };
   var rgb = hsl2rgb(h,s,l);
   return rgb2ansi(rgb[0], rgb[1], rgb[2]);
 }
