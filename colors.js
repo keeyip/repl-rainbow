@@ -1,8 +1,12 @@
 "use strict";
 
-module.exports = Rainbow;
+module.exports = rainbow;
 
-function Rainbow(a,b,c,d){
+// ###############
+// ### rainbow ###
+// ###############
+
+function rainbow(a,b,c,d){
   if (a instanceof Color) {
     return a;
   }
@@ -14,17 +18,17 @@ function Rainbow(a,b,c,d){
     if (Array.isArray(b)) {
       d = b[2]; c = b[1]; b = b[0];
     }
-    if (a === 'hsl') return Color(hsl2ansi(b, c, d));
-    if (a === 'rgb') return Color(rgb2ansi(b, c, d));
+    if (a === 'hsl') return Color(new HSL(b, c, d).toAnsi());
+    if (a === 'rgb') return Color(new RGB(b, c, d).toAnsi());
     if (a === 'ansi') return Color(b);
-    if (a[0] === '#') return Color(hex2ansi(a));
+    if (a[0] === '#') return Color(new RGB(a).toAnsi());
   }
   if (isDecimal(b) || isDecimal(c) || between(256, 360, a)) {
-    return Color(hsl2ansi(a, b, c));
+    return Color(new HSL(a, b, c).toAnsi());
   } else if (inRGB(a) && inRGB(b) && inRGB(c)) {
-    return Color(rgb2ansi(a, b, c));
+    return Color(new RGB(a, b, c).toAnsi());
   } else if (isFinite(a)) {
-    return Color(rgb2ansi(a >> 16, a >> 8 & 255, a & 255));
+    return Color(new RGB(a >> 16, a >> 8 & 255, a & 255).toAnsi());
   }
   if (ansi) return Color(ansi);
   throw new Error('No idea what you gave to me');
@@ -32,29 +36,25 @@ function Rainbow(a,b,c,d){
 
 function rng(max){ return (Math.random() * max + 0.5) | 0 }
 
-Rainbow.random = function random(txt){
-  return Rainbow('ansi', rng(239))(txt || '■■■');
+rainbow.random = function random(txt){
+  return rainbow('ansi', rng(239))(txt || '■■■');
 };
 
-Rainbow.gradient = function gradient(colors, lengthPer){
+rainbow.gradient = function gradient(colors, lengthPer){
   return ColorSet(colors.map(function(color,i){
-    return Rainbow(color).gradient(colors[ (i+1) % colors.length ], lengthPer || 15);
+    return rainbow(color).gradient(colors[ (i+1) % colors.length ], lengthPer || 15);
   }));
 };
 
-Rainbow.spectrum = function spectrum(){
-  return Rainbow.gradient([ '#f00', '#ff0', '#0f0', '#0ff', '#00f', '#f0f' ]);
+rainbow.spectrum = function spectrum(){
+  return rainbow.gradient([ '#f00', '#ff0', '#0f0', '#0ff', '#00f', '#f0f' ]);
 };
 
 
 
-
-function wrapMethod(method){
-  return function(){
-    return new ColorSet(method.apply(this, arguments));
-  };
-}
-
+// ################
+// ### ColorSet ###
+// ################
 
 function ColorSet(a){
   a.__proto__ = ColorSet.prototype;
@@ -104,19 +104,145 @@ ColorSet.prototype = {
 };
 
 
+function wrapMethod(method){
+  return function(){
+    return new ColorSet(method.apply(this, arguments));
+  };
+}
+
 ['map', 'sort', 'concat', 'slice'].forEach(function(n){
   ColorSet.prototype[n] = wrapMethod(Array.prototype[n]);
 });
 
 ['fg', 'bg', 'ital', 'inv', 'under', 'bold', 'pad'].forEach(function(n){
   ColorSet.prototype[n] = function(v){
-    return this.map(function(item){ return item[n](v) });
+    return this.map(function(item){
+      if (ColorSet.prototype.isPrototypeOf(item)) {
+        return item.map(function(subitem){
+          return subitem[n](v);
+        });
+      }
+      return item[n](v)
+    });
   };
 });
 
 
+function DataColor(ctor){
+  ctor.prototype.__proto__ = DataColor.prototype;
+  ctor.name.toLowerCase().split('').forEach(function(n,i){
+    Object.defineProperty(ctor.prototype, n, {
+      enumerable: true, configurable: true,
+      get: function(){ return this.data[i] },
+      set: function(v){ this.data[i] = v },
+    });
+  });
+  return ctor;
+}
+
+DataColor.prototype = {
+  get 0(){ return this.data[0] },
+  get 1(){ return this.data[1] },
+  get 2(){ return this.data[2] },
+  set 0(v){ this.data[0] = v },
+  set 1(v){ this.data[1] = v },
+  set 2(v){ this.data[2] = v },
+  toArray: function toArray(){ return [this[0],this[1],this[2]] },
+  escape: function escape(t){ return Color(this.toAnsi())(t) },
+  length: 3
+};
+
+var MIN = Math.min;
+var MAX = Math.max;
+function ROUND(n){ return n + .5 | 0 }
+function FIX(n){ return +n.toFixed(2) }
+function T100(n){ return n * 100 + .5 | 0 }
+function T255(n){ return n * 255 + .5 | 0 }
+function F100(n){ return FIX(n / (100 + .5 | 0)) }
+function F255(n){ return FIX(n / (255 + .5 | 0)) }
+function T51(x){ return FIX(x / 51 + 0.5 | 0) }
+function hex2rgb(hex){
+  hex = '0x' + hex.slice(1).replace(hex.length > 4 ? hex : /./g,'$&$&') | 0;
+  return [hex >> 16, hex >> 8 & 255,  hex & 255];
+}
+
+
+function RGB(d){
+  if (typeof d === 'string' && d[0] === '#') {
+    d = hex2rgb(d);
+  } else if (!Array.isArray(d)) {
+    d = [].slice.call(arguments, 0, 3);
+  }
+  d[0] = ROUND(d[0]);
+  d[1] = ROUND(d[1]);
+  d[2] = ROUND(d[2]);
+  Object.defineProperty(this, 'data', { value: new Uint8Array(d) });
+}
+
+RGB.prototype = {
+  toHSL: function toHSL(){
+    var r=this.data[0]/255, g=this.data[1]/255, b=this.data[2]/255;
+    if (r === g === b) return new HSL([0, 0, FIX(r)]);
+    var max=MAX(r,g,b), min=MIN(r,g,b), diff=max-min;
+    var h = r == max ? (g-b)/diff+(g<b?6:0) : g == max ? (b-r)/diff+2 : (r-g)/diff+4;
+    var l = (max+min)/2;
+    var s = diff/(l>.5 ? 2-max-min : max+min);
+    return new HSL([h*60+.5|0, s, l]);
+  },
+  toAnsi: function toAnsi(){
+    return T51(this.data[0]) * 36 + T51(this.data[1]) * 6 + T51(this.data[2]) + 16;
+  },
+  toHex: function toHex(){
+    return '#' + ((256 + this.data[0] << 8 | this.data[1]) << 8 | this.data[2]).toString(16).slice(1);
+  },
+  toXYZ: function toXYZ(){
+    function d(s){ return (s/=255) < 0.04046 ? s / 12.92 : Math.pow((s+0.055)/1.055, 2.4) }
+    var a=d(this[0]), b=d(this[1]), c=d(this[2]);
+    return [0.4124*a+0.3576*b+0.1805*c, 0.2126*a+0.7152*b+0.0722*c, 0.0193*a+0.1192*b+0.9505*c].map(F100);
+  },
+  inspect: function inspect(){
+    return this.escape('[ R: '+this.data[0]+' G: '+this.data[1]+' B: '+this.data[2]+' ]');
+  }
+};
+
+function HSL(d){
+  d = Array.isArray(d) ? d : [].slice.call(arguments, 0, 3);
+  d[0] = ROUND(d[0]);
+  d[1] = d[1] > 1 ? ROUND(d[1]) : T100(d[1]);
+  d[2] = d[2] > 1 ? ROUND(d[2]) : T100(d[2]);
+  Object.defineProperty(this, 'data', { value: new Uint8Array(d) });
+}
+
+HSL.prototype = {
+  toRGB: function toRGB(){
+    var a = this.data[0]/60, b=F100(this.data[1]), c=F100(this.data[2]);
+    b=[c+=b*=c<.5 ? c : 1-c, c-a%1*b*2, c-=b*=2, c, c+a%1*b, c+b];
+    return new RGB([T255(b[~~a%6]), T255(b[(a|16)%6]), T255(b[(a|8)%6])]);
+  },
+  toAnsi: function toAnsi(){
+    return this.toRGB().toAnsi();
+  },
+  toHex: function toHex(){
+    return this.toRGB().toHex();
+  },
+  toXYZ: function toXYZ(){
+    return this.toRGB().toXYZ();
+  },
+  inspect: function inspect(){
+    return this.escape('[ H: '+this.data[0]+' S: '+this.data[1]+'% L: '+this.data[2]+'% ]');
+  },
+};
+
+DataColor(RGB);
+DataColor(HSL);
+
+
+// #############
+// ### Color ###
+// #############
+
 function Color(code){
-  if (!isFinite(code)) return Rainbow(code);
+  if (!isFinite(code)) return rainbow(code);
   function Ansi(str){
     if (this instanceof Ansi) {
       var child = function AnsiChild(str){
@@ -134,9 +260,7 @@ function Color(code){
 }
 
 
-Color.prototype = function(){
-  var sets = {};
-
+var sets = function(sets){
   sets.rgb = [
     [   0,   0,   0 ], [ 205, 0,   0 ], [ 0, 205,   0 ], [ 205, 205,   0 ],
     [   0,   0, 238 ], [ 205, 0, 205 ], [ 0, 205, 205 ], [ 229, 229, 229 ],
@@ -155,162 +279,131 @@ Color.prototype = function(){
     sets.rgb.push([r, r, r]);
   }
 
-  sets.hsl = sets.rgb.map(function(c){ return rgb2hsl(c[0], c[1], c[2]) });
+  function distance(a,b){
+    return sqr(a[0]-b[0]) + sqr(a[1]-b[1]) + sqr(a[2]-b[2]);
+  }
 
-  var limited = sets.rgb.slice(0,16);
-  var cache = [];
+  sets.hsl = [];
+  sets.xyz = [];
 
-  function closest(set, val){
-    if (typeof set === 'string' && set in sets) set = sets[set];
-    return set.reduce(function(n,v,i){
+  sets.rgb.map(function(c,i){
+    sets.rgb[i] = new RGB(c);
+    sets.hsl[i] = sets.rgb[i].toHSL();
+    sets.xyz[i] = sets.rgb[i].toXYZ();
+  });
+
+  sets.basic = sets.rgb.slice(0,16);
+
+  sets.closest = function(val, set){
+    set = set || 'hsl';
+    return sets[set].reduce(function(n,v,i){
       var d = distance(val, v);
       return d < n[0] ? [d, v, i] : n;
     }, [Infinity]);
   }
 
-  function distance(a,b){
-    return sqr(a[0]-b[0]) + sqr(a[1]-b[1]) + sqr(a[2]-b[2]);
-  }
-
-  function mapDistance(v){
-    v = v.hsl();
-    return sets.hsl.slice(16).map(function(c){
-      return [c, distance(c, v)];
+  sets.distances = function(val, set){
+    set = set || 'hsl';
+    val = val[set]();
+    return sets[set].slice(16).map(function(c){
+      return [c, distance(c, val)];
     }).sort(function(a,b){
       return a[1]-b[1];
     });
   }
+  return sets;
+}({});
 
-  return {
-    __proto__: Rainbow.prototype,
-    constructor: Color,
-    ansi: function ansi(){
-      return this;
-    },
-    rgb: function rgb(){
-      return sets.rgb[this.code];
-    },
-    hsl: function hsl(){
-      return sets.hsl[this.code];
-    },
-    hex: function hex(){
-      return rgb2hex.apply(null, sets.rgb[this.code]);
-    },
-    basic: function basic(bg){
-      if (this.code in cache) return cache[this.code];
-      var result = closest(limited, sets.rgb[this.code])[2];
-      return cache[this.code] = result + (result > 7 ? 82 : 30) + (bg ? 10 : 0);
-    },
-    closest: function closest(n, t){
-      var maps = mapDistance(this).slice(0, isFinite(n) ? n : 239);
-      return new ColorSet(maps.map(function(c){
-        return Rainbow('hsl', c[0][0], c[0][1], c[0][2]);
-      }));
-    },
-    gradient: function gradient(c, n){
-      var a = this.hsl();
-      if (typeof c === 'string') c = Rainbow(c);
-      n = (+n || 10)+1;
-      c = c.hsl();
-      var diff = [ (a[0]-c[0]) / n, (a[1]-c[1]) / n, (a[2]-c[2]) / n ];
-      var out = [this];
-      while (--n) {
-        out[n] = Rainbow('hsl', a[0]-diff[0]*n, a[1]-diff[1]*n, a[2]-diff[2]*n);
-      }
-      return new ColorSet(out);
-    },
-    escape: function escape(text){
-      var start = [];
-      var end = [];
-      var type = this.foreground ? '4' : '3';
-      start.push(type+'8;5;'+this.code);
-      end.push(type+'9');
-      if (type !== '4' && this.background) {
-        start.push('48;5;'+this.background.code);
-        end.push('49');
-      }
-      if (type !== '3' && this.foreground) {
-        start.push('38;5;'+this.foreground.code);
-        end.push('39');
-      }
-      if (this.bolded)    start.push('1'), end.push('22');
-      if (this.italic)    start.push('3'), end.push('23');
-      if (this.underline) start.push('4'), end.push('24');
-      if (this.inverse)   start.push('7'), end.push('27');
-      return esc(start) + space(this.padding) + text + space(this.padding) + esc(end);
-    },
-    style: function style(styles){
-      var out = Object.create(this);
-      styles.forEach(function(style){
-        out[style] = true;
-      });
-    },
-    child: function child(){
-      function AnsiChild(str){ return AnsiChild.escape(str) }
-      AnsiChild.__proto__ = this;
-      return AnsiChild;
-    },
-    fg: function foreground(v){ this.foreground = (v instanceof Rainbow ? v : Rainbow(v)); return this },
-    bg: function background(v){ this.background = (v instanceof Rainbow ? v : Rainbow(v)); return this },
-    ital: function italic(v){ def(this, 'italic', v || !this.italic); return this },
-    inv: function inverse(v){ def(this, 'inverse', v || !this.inverse); return this },
-    bold: function bolded(v){ def(this, 'bolded', v || !this.bolded); return this },
-    under: function underline(v){ def(this, 'underline',  v || !this.underline); return this },
-    pad: function padding(pad){ this.padding = arguments.length ? pad : (num(this.padding)+1)%4; return this; },
-    toString: function toString(){ return this.escape(('   '+this.code).slice(-3)) },
-    inspect: function inspect(){ return this.toString() },
-  };
-}();
+var cache = [];
+
+
+
+Color.prototype = {
+  constructor: Color,
+  ansi: function ansi(){
+    return this;
+  },
+  rgb: function rgb(){
+    return sets.rgb[this.code];
+  },
+  hsl: function hsl(){
+    return sets.hsl[this.code];
+  },
+  xyz: function xyz(){
+    return sets.xyz[this.code];
+  },
+  hex: function hex(){
+    return sets.rgb[this.code].toHex();
+  },
+  basic: function basic(bg){
+    if (this.code in cache) return cache[this.code];
+    var result = sets.closest(sets.rgb[this.code], 'basic')[2];
+    return cache[this.code] = result + (result > 7 ? 82 : 30) + (bg ? 10 : 0);
+  },
+  closest: function closest(n, t){
+    var maps = sets.distances(this).slice(0, isFinite(n) ? n : 239);
+    return new ColorSet(maps.map(rainbow));
+  },
+  gradient: function gradient(c, n){
+    var a = this.hsl();
+    if (typeof c === 'string') c = rainbow(c);
+    n = (+n || 10)+1;
+    c = c.hsl();
+    var diff = [ (a[0]-c[0]) / n, (a[1]-c[1]) / n, (a[2]-c[2]) / n ];
+    var out = [this];
+    while (--n) {
+      out[n] = rainbow('hsl', a[0]-diff[0]*n, a[1]-diff[1]*n, a[2]-diff[2]*n);
+    }
+    return new ColorSet(out);
+  },
+  escape: function escape(text){
+    var start = [];
+    var end = [];
+    var type = this.foreground ? '4' : '3';
+    start.push(type+'8;5;'+this.code);
+    end.push(type+'9');
+    if (type !== '4' && this.background) {
+      start.push('48;5;'+this.background.code);
+      end.push('49');
+    }
+    if (type !== '3' && this.foreground) {
+      start.push('38;5;'+this.foreground.code);
+      end.push('39');
+    }
+    if (this.bolded)    start.push('1'), end.push('22');
+    if (this.italic)    start.push('3'), end.push('23');
+    if (this.underline) start.push('4'), end.push('24');
+    if (this.inverse)   start.push('7'), end.push('27');
+    return esc(start) + space(this.padding) + text + space(this.padding) + esc(end);
+  },
+  style: function style(styles){
+    var out = Object.create(this);
+    styles.forEach(function(style){
+      out[style] = true;
+    });
+  },
+  child: function child(){
+    function AnsiChild(str){ return AnsiChild.escape(str) }
+    AnsiChild.__proto__ = this;
+    return AnsiChild;
+  },
+  fg: function foreground(v){ this.foreground = (v instanceof rainbow ? v : rainbow(v)); return this },
+  bg: function background(v){ this.background = (v instanceof rainbow ? v : rainbow(v)); return this },
+  ital: function italic(v){ def(this, 'italic', v || !this.italic); return this },
+  inv: function inverse(v){ def(this, 'inverse', v || !this.inverse); return this },
+  bold: function bolded(v){ def(this, 'bolded', v || !this.bolded); return this },
+  under: function underline(v){ def(this, 'underline',  v || !this.underline); return this },
+  pad: function padding(pad){ this.padding = pad != null ? pad : (num(this.padding)+1)%4; return this; },
+  toString: function toString(){ return this.escape(('   '+this.code).slice(-3)) },
+  inspect: function inspect(){ return this.toString() },
+};
 
 function def(o,n,v){ Object.defineProperty(o,n, { configurable: true, writable: true, value: v })  }
-
 function esc(a){ return String.fromCharCode(27)+'['+ a.join(';')+'m' }
 function space(n){ return n > 0 ? Array(n+1).join(' ') : '' }
-
 function between(min,max,n){ return n >= min && n <= max }
 function inRGB(n){ return between(0,255,n) }
 function sqr(n){ return n*n }
 function isPercent(n){ return n >= 0 && n <= 0 }
 function isDecimal(n){ return n | 0 !== n}
 function num(o){ return +o || 0 }
-function twodigits(n){ return +n.toFixed(2) || 0 }
-
-
-function hex2rgb(hex){
-  hex = '0x' + hex.slice(1).replace(hex.length > 4 ? hex : /./g,'$&$&') | 0;
-  return [hex >> 16, hex >> 8 & 255,  hex & 255];
-}
-
-function rgb2hex(r,g,b){
-  return '#' + ((256 + r << 8 | g) << 8 | b).toString(16).slice(1);
-}
-
-function rgb2ansi(r,g,b){
-  function d(x){ return (x / 255 * 5 + 0.5) | 0 }
-  return d(r) * 36 + d(g) * 6 + d(b) + 16;
-}
-
-function rgb2hsl(r,g,b){
-  var d=Math.min(r/=255,g/=255,b/=255),e=Math.max(r,g,b),f=e-d,g,h,i=(e+d)/2;
-  f?(h=i<.5?f/(e+d):f/(2-e-d),r==e?g=(g-b)/f+(g<b?6:0):g==e?g=(b-r)/f+2:g=(r-g)/f+4,g*=60):h=g=0;
-  return [g+.5|0,+h.toFixed(2),+i.toFixed(2)];
-}
-
-function hsl2rgb(d,e,f){
-  function g(a){ return a>360?a-=360:a<0&&(a+=360),a<60?b+(c-b)*a/60:a<180?c:a<240?b+(c-b)*(240-a)/60:b }
-  function h(a){ return g(a)*255+.5|0 }
-  var b,c;d%=360;d<0&&(d+=360);
-  e=e<0?0:e>1?1:e;f=f<0?0:f>1?1:f;
-  c=f<=.5?f*(1+e):f+e-f*e;b=2*f-c;
-  return [h(d+120), h(d), h(d-120)];
-}
-
-function hsl2ansi(h,s,l){
-  var rgb = hsl2rgb(h,s,l);
-  return rgb2ansi(rgb[0], rgb[1], rgb[2]);
-}
-
-function hex2ansi(hex){
-  var rgb = hex2rgb(hex);
-  return rgb2ansi(rgb[0], rgb[1], rgb[2]);
-}
