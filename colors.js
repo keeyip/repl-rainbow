@@ -22,8 +22,11 @@ function rainbow(a,b,c,d){
     if (a === 'rgb') return Color(new RGB(b, c, d).toAnsi());
     if (a === 'ansi') return Color(b);
     if (a[0] === '#') return Color(new RGB(a).toAnsi());
-  }
-  if (isDecimal(b) || isDecimal(c) || between(256, 360, a)) {
+  } else if (a.toAnsi) {
+    return Color(a.toAnsi());
+  } else if (a.ansi) {
+    return Color(a.ansi());
+  } else if (isDecimal(b) || isDecimal(c) || between(256, 360, a)) {
     return Color(new HSL(a, b, c).toAnsi());
   } else if (inRGB(a) && inRGB(b) && inRGB(c)) {
     return Color(new RGB(a, b, c).toAnsi());
@@ -180,6 +183,7 @@ function RGB(d){
 }
 
 RGB.prototype = {
+  type: 'rgb',
   toHSL: function toHSL(){
     var r=this.data[0]/255, g=this.data[1]/255, b=this.data[2]/255;
     if (r === g === b) return new HSL([0, 0, FIX(r)]);
@@ -214,6 +218,7 @@ function HSL(d){
 }
 
 HSL.prototype = {
+  type: 'hsl',
   toRGB: function toRGB(){
     var a = this.data[0]/60, b=F100(this.data[1]), c=F100(this.data[2]);
     b=[c+=b*=c<.5 ? c : 1-c, c-a%1*b*2, c-=b*=2, c, c+a%1*b, c+b];
@@ -242,7 +247,10 @@ DataColor(HSL);
 // #############
 
 function Color(code){
-  if (!isFinite(code)) return rainbow(code);
+  if (!isFinite(code)) {
+    if (!code.toAnsi) return rainbow(code);
+    code = code.toAnsi();
+  }
   function Ansi(str){
     if (this instanceof Ansi) {
       var child = function AnsiChild(str){
