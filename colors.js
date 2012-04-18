@@ -342,6 +342,7 @@ var cache = [];
 
 Color.prototype = {
   constructor: Color,
+  mode: 256,
   ansi: function ansi(){
     return this;
   },
@@ -377,6 +378,22 @@ Color.prototype = {
       out[n] = rainbow('hsl', a[0]-diff[0]*n, a[1]-diff[1]*n, a[2]-diff[2]*n);
     }
     return new ColorSet(out);
+  },
+  escape16: function escape16(text){
+    var start = [];
+    var end = [];
+    var type = this.foreground ? '4' : '3';
+    start.push(this.basic());
+    end.push(type+'9');
+    if (type !== '4' && this.background) {
+      start.push(this.background.basic());
+      end.push('49');
+    }
+    if (type !== '3' && this.foreground) {
+      start.push(this.foreground.basic());
+      end.push('39');
+    }
+    return esc(start) + space(this.padding) + text + space(this.padding) + esc(end);
   },
   escape: function escape(text){
     var start = [];
@@ -416,9 +433,34 @@ Color.prototype = {
   bold: function bolded(v){ def(this, 'bolded', v || !this.bolded); return this },
   under: function underline(v){ def(this, 'underline',  v || !this.underline); return this },
   pad: function padding(pad){ this.padding = pad != null ? pad : (num(this.padding)+1)%4; return this; },
-  toString: function toString(){ return this.escape(('   '+this.code).slice(-3)) },
   inspect: function inspect(){ return this.toString() },
+  toString: function toString(){ return this.escape(('   '+this.code).slice(-3)) },
 };
+
+
+Color.prototype.setMode = function(C){
+  function none(s){ return s }
+  var modes = {
+    0: none,
+    none: none,
+    off : none,
+    16: C.escape16,
+    win32: C.escape16,
+    xterm: C.escape16,
+    256: C.escape,
+    xterm256: C.escape,
+    normal: C.escape,
+    linux: C.escape,
+    darwin: C.escape,
+  };
+  return function setMode(mode){
+    if (mode in modes) {
+      this.escape = modes[mode];
+    } else {
+      throw new Error('Unknown mode "'+mode+'"');
+    }
+  }
+}(Color.prototype);
 
 function def(o,n,v){ Object.defineProperty(o,n, { configurable: true, writable: true, value: v })  }
 function esc(a){ return String.fromCharCode(27)+'['+ a.join(';')+'m' }
