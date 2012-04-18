@@ -1,5 +1,7 @@
 "use strict";
 
+var names = require('./names');
+
 module.exports = rainbow;
 
 // ###############
@@ -13,7 +15,8 @@ function rainbow(a,b,c,d){
   var hsl, rgb, ansi;
   if (Array.isArray(a)) {
     c = a[2]; b = a[1]; a = a[0];
-  } else if (typeof a === 'string') {
+  }
+  if (typeof a === 'string') {
     a = a.toLowerCase();
     if (Array.isArray(b)) {
       d = b[2]; c = b[1]; b = b[0];
@@ -22,15 +25,25 @@ function rainbow(a,b,c,d){
     if (a === 'rgb') return Color(new RGB(b, c, d).toAnsi());
     if (a === 'ansi') return Color(b);
     if (a[0] === '#') return Color(new RGB(a).toAnsi());
-  } else if (a.toAnsi) {
+    var name = names.indexOf(a);
+    if (~name) return Color(name);
+  }
+  if (isFinite(a) && isFinite(b) && isFinite(c)) {
+    return Color(new RGB(a,b,c).toAnsi());
+  }
+  if (a.toAnsi) {
     return Color(a.toAnsi());
-  } else if (a.ansi) {
+  }
+  if (a.ansi) {
     return Color(a.ansi());
-  } else if (isDecimal(b) || isDecimal(c) || between(256, 360, a)) {
+  }
+  if (isDecimal(b) || isDecimal(c) || between(256, 360, a)) {
     return Color(new HSL(a, b, c).toAnsi());
-  } else if (inRGB(a) && inRGB(b) && inRGB(c)) {
+  }
+  if (inRGB(a) && inRGB(b) && inRGB(c)) {
     return Color(new RGB(a, b, c).toAnsi());
-  } else if (isFinite(a)) {
+  }
+  if (isFinite(a)) {
     return Color(new RGB(a >> 16, a >> 8 & 255, a & 255).toAnsi());
   }
   if (ansi) return Color(ansi);
@@ -264,6 +277,7 @@ function Color(code){
   }
   Ansi.__proto__ = Color.prototype;
   Ansi.code = code;
+  Ansi.name = names[code];
   return Ansi;
 }
 
@@ -395,8 +409,8 @@ Color.prototype = {
     AnsiChild.__proto__ = this;
     return AnsiChild;
   },
-  fg: function foreground(v){ this.foreground = (v instanceof rainbow ? v : rainbow(v)); return this },
-  bg: function background(v){ this.background = (v instanceof rainbow ? v : rainbow(v)); return this },
+  fg: function foreground(v){ this.foreground = (v instanceof Color ? v : rainbow(v)); return this },
+  bg: function background(v){ this.background = (v instanceof Color ? v : rainbow(v)); return this },
   ital: function italic(v){ def(this, 'italic', v || !this.italic); return this },
   inv: function inverse(v){ def(this, 'inverse', v || !this.inverse); return this },
   bold: function bolded(v){ def(this, 'bolded', v || !this.bolded); return this },
@@ -415,3 +429,29 @@ function sqr(n){ return n*n }
 function isPercent(n){ return n >= 0 && n <= 0 }
 function isDecimal(n){ return n | 0 !== n}
 function num(o){ return +o || 0 }
+
+
+
+
+function Colors(colorset){
+  function Colorer(colorset){
+    if (this instanceof Colorer) {
+      var child = function ColorerChild(vector){
+        return ColorerChild.escape(vector);
+      };
+      child.__proto__ = Colorer;
+      return child;
+    } else {
+      return Colorer.escape(colorset);
+    }
+  }
+  Colorer.__proto__ = Colors.prototype;
+  return Colorer;
+}
+
+
+
+Colors.prototype = {
+  
+};
+
