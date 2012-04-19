@@ -26,7 +26,7 @@ function rainbow(a,b,c,d){
     if (a === 'ansi') return Color(b);
     if (a[0] === '#') return Color(new RGB(a).toAnsi());
     var name = names.indexOf(a);
-    if (~name) return Color(name);
+    if (~name) return Color(names[name]);
   }
   if (isFinite(a) && isFinite(b) && isFinite(c)) {
     return Color(new RGB(a,b,c).toAnsi());
