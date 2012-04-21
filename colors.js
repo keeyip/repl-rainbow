@@ -277,7 +277,7 @@ function Color(code){
   }
   Ansi.__proto__ = Color.prototype;
   Ansi.code = code;
-  Ansi.name = names[code];
+  Ansi.cname = names[code];
   return Ansi;
 }
 
