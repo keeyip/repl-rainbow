@@ -426,8 +426,8 @@ Color.prototype = {
     AnsiChild.__proto__ = this;
     return AnsiChild;
   },
-  fg: function foreground(v){ this.foreground = (v instanceof Color ? v : rainbow(v)); return this },
-  bg: function background(v){ this.background = (v instanceof Color ? v : rainbow(v)); return this },
+  fg: function foreground(v){ this.foreground = (v instanceof Color ? v : rainbow.apply(this, arguments)); return this },
+  bg: function background(v){ this.background = (v instanceof Color ? v : rainbow.apply(this, arguments)); return this },
   ital: function italic(v){ def(this, 'italic', v || !this.italic); return this },
   inv: function inverse(v){ def(this, 'inverse', v || !this.inverse); return this },
   bold: function bolded(v){ def(this, 'bolded', v || !this.bolded); return this },
